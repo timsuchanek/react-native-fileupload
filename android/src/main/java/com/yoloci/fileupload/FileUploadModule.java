@@ -109,11 +109,12 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
                 ReadableMap file = files.getMap(i);
                 String filename = file.getString("filename");
                 String filepath = file.getString("filepath");
+                String name = file.getString("name");
                 filepath = filepath.replace("file://", "");
                 fileInputStream = new FileInputStream(filepath);
 
                 outputStream.writeBytes(twoHyphens + boundary + lineEnd);
-                outputStream.writeBytes("Content-Disposition: form-data; name=\"image\";filename=\"" + filename + "\"" + lineEnd);
+                outputStream.writeBytes("Content-Disposition: form-data; name=\"" + name + "\";filename=\"" + filename + "\"" + lineEnd);
                 outputStream.writeBytes(lineEnd);
 
                 bytesAvailable = fileInputStream.available();
@@ -139,7 +140,7 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
 
             int serverResponseCode = connection.getResponseCode();
             String serverResponseMessage = connection.getResponseMessage();
-            if (serverResponseCode != 200) {
+            if (serverResponseCode > 206) {
                 fileInputStream.close();
                 outputStream.flush();
                 outputStream.close();
