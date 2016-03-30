@@ -23,7 +23,18 @@ import java.io.FileInputStream;
 
 import org.json.JSONObject;
 
+//
+import android.provider.MediaStore;
+import android.provider.MediaStore.Images.Media;
+import android.net.Uri;
+import android.content.Context;
+import android.database.Cursor;
+import java.net.URL;
+import java.io.File;
+
 public class FileUploadModule extends ReactContextBaseJavaModule {
+
+    private ReactApplicationContext reactContext;
 
     @Override
     public String getName() {
@@ -32,6 +43,7 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
 
     public FileUploadModule(ReactApplicationContext reactContext) {
         super(reactContext);
+        this.reactContext = reactContext;
     }
 
     @ReactMethod
@@ -52,8 +64,6 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
         ReadableArray files = options.getArray("files");
         ReadableMap fields = options.getMap("fields");
 
-
-
         HttpURLConnection connection = null;
         DataOutputStream outputStream = null;
         DataInputStream inputStream = null;
@@ -67,7 +77,6 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
         try {
 
             connectURL = new URL(uploadUrl);
-
 
             connection = (HttpURLConnection) connectURL.openConnection();
 
@@ -84,8 +93,6 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
                 String key = iterator.nextKey();
                 connection.setRequestProperty(key, headers.getString(key));
             }
-
-
 
             connection.setRequestProperty("Connection", "Keep-Alive");
             connection.setRequestProperty("Content-Type", "multipart/form-data;boundary="+boundary);
@@ -108,7 +115,9 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
 
                 ReadableMap file = files.getMap(i);
                 String filename = file.getString("filename");
-                String filepath = file.getString("filepath");
+                // transform filepath to "realPathFromURI"
+                String filepath = getRealPathFromURI(this.reactContext, file.getString("filepath"));
+
                 String name = file.getString("name");
                 filepath = filepath.replace("file://", "");
                 fileInputStream = new FileInputStream(filepath);
@@ -172,6 +181,24 @@ public class FileUploadModule extends ReactContextBaseJavaModule {
 
         } catch(Exception ex) {
             callback.invoke("Error happened: " + ex.getMessage(), null);
+        }
+    }
+
+    // Need this to transform gallery uri to "realPath" from android Filesystem
+    public String getRealPathFromURI(ReactApplicationContext context, String filePath) {
+        Cursor cursor = null;
+        Uri contentUri = Uri.parse(filePath);
+
+        try {
+            String[] proj = { MediaStore.Images.Media.DATA };
+            cursor = context.getContentResolver().query(contentUri,  proj, null, null, null);
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            return cursor.getString(column_index);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
         }
     }
 }
